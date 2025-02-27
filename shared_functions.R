@@ -7,7 +7,8 @@ library(stringr)
 library(data.table)
 
 # Load TE annotations.
-load(file.path(work_dir,'data/Rdata/termite_TE_annotation.Rdata'))
+load(file.path('data/Rdata/termite_TE_annotation.Rdata'))
+
 # Format RepeatMasker annotation into Class, Superfamily, Famliy, etc.
 format_te_level = function(anno, anno_program = 'class.RM'){
   anno[[anno_program]] = gsub(' ','',anno[[anno_program]])
@@ -19,7 +20,6 @@ format_te_level = function(anno, anno_program = 'class.RM'){
   anno$type.lv2 = factor(anno$type.lv2, levels = type.lv2_levels)
   anno$type.lv2_full = anno[[anno_program]]
   if (grepl("RM", anno_program)){
-    print(table(anno$type.lv1))
     anno$class = unlist(RM_map[anno$type.lv1])
     anno$class.lv2 = anno$type.lv1
     anno$class.lv3 = anno$type.lv2
@@ -80,99 +80,5 @@ read_CpG = function(x, species){
   return(CpG_gd)
 }
 
-# Summarize the TE methylation level by examining the overlap of CpG sites and TEs.
-summarise_repeat_CpG = function(cpg.data, repeat.data, target.var = 'repeat_id',species = NULL,
-                                meth_cut = 80, cov_cut = 10, cov_up_cut = 100){
-  # cpg.data: CpG site data.
-  # repeat.data: TE data.
-  # meth_cut: Probability threshold for a CpG site to be considered methylated.
-  # cov_cut: Lower read coverage threhold.
-  # cov_up_cut: upper read coverage threhold.
-  # Filter CpG sites with low or extremely high coverage.
-  cpg.data.filtered = cpg.data[which(cpg.data$cov > cov_cut & cpg.data$cov < cov_up_cut)]
-  repeat.data.df = droplevels(data.frame(repeat.data))
-  target.var.full = names(table(subset(repeat.data.df, select = target.var)))
-  tmp_list = list()
-  tmp_list$TEs = target.var.full
-  n_max = length(tmp_list$TEs)
-  tmp_list$UnM = rep(0,n_max )
-  tmp_list$M = rep(0, n_max)
-  for (i in 1:n_max){
-    target_repeat = target.var.full[i]
-    repeat.data.target = subset(repeat.data, eval(as.name(target.var)) == target_repeat)
-    cpg_repeat.target = subsetByOverlaps(cpg.data.filtered,repeat.data.target)
-    if (length(cpg_repeat.target) > 0){
-      # Only CpG sites with > meth_cut are considered methylated.
-      tmp_list$UnM[i] = sum(cpg_repeat.target$m.Prob < meth_cut)
-      tmp_list$M[i] = sum(cpg_repeat.target$m.Prob >= meth_cut)
-    }
-    else{
-      tmp_list$UnM[i] = NA
-      tmp_list$M[i] = NA
-    }
-  }
-  
-  temp = data.frame(do.call(cbind,tmp_list))
-  temp$UnM = as.numeric(temp$UnM)
-  temp$M = as.numeric(temp$M)
-  temp$UnM[is.na(temp$UnM)] = 0
-  temp$M[is.na(temp$M)] = 0
-  cpg_repeat.summary = temp[,c(2,3)]
-  rownames(cpg_repeat.summary) = temp$TEs
-  cpg_repeat.summary = rbind(cpg_repeat.summary,table(cpg.data.filtered$m.Prob > meth_cut) )
-  cpg_repeat.summary$CpG = cpg_repeat.summary$M + cpg_repeat.summary$UnM
-  cpg_repeat.summary$M.Prob = cpg_repeat.summary$M/cpg_repeat.summary$CpG
-  tmp_nrow = dim(cpg_repeat.summary)[1]
-  cpg_repeat.summary[[target.var]] = c(rownames(cpg_repeat.summary)[c(1: (tmp_nrow - 1))], "Genomic")
-  target.lvl = c('class','class.lv2','class.lv3','class.full')
-  cpg_repeat.summary[,target.lvl] = 
-    repeat.data.df[match(cpg_repeat.summary[[target.var]],
-                         repeat.data.df[[target.var]]), target.lvl]
-  cpg_repeat.summary[tmp_nrow,target.lvl] = "Genomic"
-  cpg_repeat.summary$M.log = cpg_repeat.summary$M.Prob/cpg_repeat.summary$M.Prob[tmp_nrow]
-  cpg_repeat.summary$Species = species
-  return(cpg_repeat.summary)
-}
-
-# Format the output of one-code-to-find-them-all
-# (https://github.com/mptrsen/mobilome/tree/master/code/Onecodetofindthemall)
-
-format_te_sum = function(te_sum, sp, annotatation = T, anno_program = 'class.MC'){
-  te_sum = te_sum[-grep('^#',te_sum$V1),]
-  te_sum = te_sum[-which(te_sum$V1 == ''),]
-  te_sum = te_sum[order(te_sum$V2),]
-  repeat_id = unique(sort(te_sum$V2))
-  # Summarize TE abundance at the family level (repeat_id)
-  te_sum.new  = data.frame(row.names = repeat_id, repeat_id = repeat_id)
-  for (i in repeat_id){
-    te_sum.new[i,'length'] = max(te_sum[which(te_sum$V2 == i),'V3'])
-    te_sum.new[i,'fragments'] = sum(te_sum[which(te_sum$V2 == i),'V4'])
-    te_sum.new[i,'number'] = sum(te_sum[which(te_sum$V2 == i),'V5'])
-    te_sum.new[i,'size'] = sum(te_sum[which(te_sum$V2 == i),'V7'])
-  }
-  # Filter TEs with less than 4 copies.
-  te_sum.new = te_sum.new[which(te_sum.new$number > 3),]
-  if (annotatation == T){
-    te_sum.new = annotate_te(te_sum.new,anno_program = anno_program)
-  }
-  te_sum.new$species = sp
-  return(te_sum.new)
-}
-
-# Summarize the CpG methylation level at ?
-summarize_te_CpG = function(x, anno_class = F){
-  sum_vars = c("M",'UnM','Number','Size')
-  summary_data = data.frame(matrix(ncol = length(sum_vars)))
-  colnames(summary_data) = sum_vars
-  summary_data[,sum_vars] = apply(x[,sum_vars],2, sum)
-  summary_data$M.Prob_1 = median(x$M.Prob)
-  summary_data$M.Prob_2 = summary_data$M/(summary_data$M + summary_data$UnM)
-  summary_data$Length = median(x$Length)
-  summary_data$GC = median(x$GC)
-  summary_data$M.log = median(x$M.log)
-  if (anno_class == T){
-    summary_data$class = x$class[1]}
-  return(summary_data)
-}
 
 

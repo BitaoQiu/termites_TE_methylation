@@ -1,0 +1,6 @@
+load("/Users/bitaoqiu/Documents/FR_data_analysis/termite_TE_5mc/git/termites_TE_methylation/data/Rdata/termite_TE_abundance.Rdata")
+ls()
+head(termite_TE.sum.matrix)
+load("/Users/bitaoqiu/Documents/FR_data_analysis/termite_TE_5mc/git/termites_TE_methylation/data/Rdata/Mbel_SVs_v2.Rdata")
+ls()
+head(sv_data)
