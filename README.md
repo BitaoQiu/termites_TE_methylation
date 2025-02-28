@@ -13,6 +13,6 @@ Key codes for analyzing the co-evolution between TE and TE methylation in termit
 ## Relevant data:
 * TE methylation levels in termite genomes [repeat_5mC_summary_C90.Rdata](data/Rdata/repeat_5mC_summary_C90.Rdata).
 * Non-redundant repeat library for termites and the woodroach [termite_TE_90.fa.gz](data/repeats/termite_TE_90.fa.gz).
-* TE family abundances in termites and the woodroach [data/repeats/*_TE_summary.tsv](data/repeats)..
+* TE family abundances in termites and the woodroach [data/repeats/*_TE_summary.tsv](data/repeats).
 * TE familiy annotation [termite_TE_annotation.Rdata](data/Rdata/termite_TE_annotation.Rdata).
 * SVs in M.bellicosus populations and SV annotation [Mbel_SVs_v2.Rdata](data/Rdata/Mbel_SVs_v2.Rdata).
