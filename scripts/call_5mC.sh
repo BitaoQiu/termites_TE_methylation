@@ -1,3 +1,4 @@
+#!/bin/sh
 # Required files: 
 # *_5mc.bam (HiFi reads with 5mC information)
 # Genome assembly with minimap index. e.g., Mbel.mmi
